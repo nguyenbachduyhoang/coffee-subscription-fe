@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  address: string;
   password: string;
   avatar?: string;
 }
@@ -58,8 +59,7 @@ export interface LoginRequest {
 }
 
 export interface VerifyRequest {
-  email: string;
-  code: string;
+  token: string;
 }
 
 export interface ForgotPasswordRequest {

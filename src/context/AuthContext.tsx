@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 import { User } from '../types';
-import { login as apiLogin, register as apiRegister, getMyProfile } from '../utils/api';
+import { login as apiLogin, register as apiRegister, getMyProfile, verify as apiVerify } from '../utils/api';
 import { storageUtils } from '../utils/localStorage';
 import { auth, googleProvider } from '../utils/firebase';
 import { signInWithPopup, User as FirebaseUser } from 'firebase/auth';
@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (userData: { name: string; email: string; phone: string; password: string; address: string }) => Promise<boolean>;
+  verifyAccount: (token: string) => Promise<boolean>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => void;
   loginWithGoogle: () => Promise<boolean>;
@@ -30,20 +31,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const res = await apiLogin({ email, password });
-      // Nếu BE trả về token dạng text
-      if (res && typeof res === 'string' && res.length > 100) {
-        storageUtils.setToken(res);
-        // Lấy profile từ BE
-        const profile = await getMyProfile(res);
-        if (profile) {
-          setUser(profile);
-          storageUtils.setCurrentUser(profile);
-          return true;
+      const response = await apiLogin({ email, password });
+      console.log('Raw login response:', response);
+      
+      // Xử lý response theo đúng format từ BE
+      const token = response && typeof response === 'string' ? response : response?.token;
+      
+      if (token) {
+        storageUtils.setToken(token);
+        try {
+          const profile = await getMyProfile(token);
+          if (profile) {
+            setUser(profile);
+            storageUtils.setCurrentUser(profile);
+            return true;
+          }
+        } catch (profileError) {
+          console.error('Error fetching profile:', profileError);
         }
       }
       return false;
-    } catch {
+    } catch (error) {
+      console.error('Login error:', error);
       return false;
     }
   };
@@ -52,32 +61,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (userData: { name: string; email: string; phone: string; password: string; address: string }): Promise<boolean> => {
     try {
       const res = await apiRegister(userData);
-      // Nếu BE trả về token dạng text (giống login)
-      if (res && typeof res === 'string' && res.length > 100) {
-        storageUtils.setToken(res);
-        const profile = await getMyProfile(res);
-        if (profile) {
-          setUser(profile);
-          storageUtils.setCurrentUser(profile);
-        }
-        return true;
-      }
-      // Nếu BE trả về object có token
-      if (res && res.token) {
-        storageUtils.setToken(res.token);
-        const profile = await getMyProfile(res.token);
-        if (profile) {
-          setUser(profile);
-          storageUtils.setCurrentUser(profile);
-        }
-        return true;
-      }
-      // Nếu BE trả về object có success
-      if (res && res.success) {
+      // Accept success when backend returns HTTP 200/201 or returns a truthy data object
+      if (res && (res.status === 200 || res.status === 201 || !!res.data)) {
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('Register error:', err);
+      return false;
+    }
+  };
+
+  const verifyAccount = async (token: string): Promise<boolean> => {
+    try {
+      const res = await apiVerify({ token });
+      if ((typeof res === 'object' && res?.success) || res === true || (res && (res.status === 200 || res.status === 201 || !!res.data))) {
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Verify error:', err);
       return false;
     }
   };
@@ -108,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: firebaseUser.email || '',
         phone: firebaseUser.phoneNumber || '',
         password: '', // Google users don't have a password
+        address: '',
         avatar: firebaseUser.photoURL || undefined,
       };
       setUser(profile);
@@ -119,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateProfile, loginWithGoogle }}>
+    <AuthContext.Provider value={{ user, login, register, verifyAccount, logout, updateProfile, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

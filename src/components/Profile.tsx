@@ -1,24 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Edit3, History, Calendar } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { storageUtils } from '../utils/localStorage';
 import { packages } from '../data/packages';
+import * as api from '../utils/api';
 
 export function Profile() {
-  const { user, updateProfile } = useAuth();
+  const [user, setUser] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || ''
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        // use storageUtils.getToken() so we read the same key AuthContext writes
+        const token = storageUtils.getToken();
+        if (!token) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        const data = await api.getMyProfile(token);
+        if (data && data.name && data.email) {
+          setUser(data);
+          setEditData({
+            name: data.name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            address: data.address || ''
+          });
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        setError('Không thể tải thông tin cá nhân.');
+        setUser(null);
+      }
+      setLoading(false);
+    };
+    fetchProfile();
+  }, []);
 
   const purchaseHistory = user ? storageUtils.getPurchaseHistory(user.id) : [];
 
-  const handleSave = () => {
-    updateProfile(editData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    setError('');
+    setSuccess('');
+    try {
+      // use storageUtils.getToken() instead of localStorage key 'token'
+      const token = storageUtils.getToken();
+      if (!token) {
+        setError('Bạn chưa đăng nhập.');
+        return;
+      }
+      const res = await api.updateProfile(editData, token);
+      if (res && res.success !== false) {
+        setUser({ ...user, ...editData });
+        setSuccess('Cập nhật thành công!');
+        setIsEditing(false);
+      } else {
+        setError(res?.message || 'Cập nhật thất bại.');
+      }
+    } catch (err) {
+      setError('Có lỗi xảy ra khi cập nhật.');
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -35,6 +90,10 @@ export function Profile() {
       day: 'numeric'
     });
   };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Đang tải...</div>;
+  }
 
   if (!user) {
     return (
@@ -90,7 +149,8 @@ export function Profile() {
                   <span>{isEditing ? 'Hủy' : 'Chỉnh sửa'}</span>
                 </motion.button>
               </div>
-
+              {error && <div className="text-red-500 mb-2">{error}</div>}
+              {success && <div className="text-green-600 mb-2">{success}</div>}
               {isEditing ? (
                 <motion.div
                   className="space-y-4"
@@ -131,6 +191,17 @@ export function Profile() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beige focus:border-transparent"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Địa chỉ
+                    </label>
+                    <input
+                      type="text"
+                      value={editData.address}
+                      onChange={(e) => setEditData(prev => ({ ...prev, address: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beige focus:border-transparent"
+                    />
+                  </div>
                   <motion.button
                     onClick={handleSave}
                     className="bg-espresso text-white px-6 py-2 rounded-full hover:bg-opacity-90 transition-colors duration-200"
@@ -159,6 +230,12 @@ export function Profile() {
                       Số điện thoại
                     </label>
                     <div className="text-espresso font-semibold">{user.phone}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Địa chỉ
+                    </label>
+                    <div className="text-espresso font-semibold">{user.address}</div>
                   </div>
                 </div>
               )}
