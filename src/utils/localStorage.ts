@@ -5,9 +5,19 @@ const STORAGE_KEYS = {
   USERS: 'cafedaily_users',
   PURCHASE_HISTORY: 'cafedaily_purchase_history',
   CONTACT_MESSAGES: 'cafedaily_contact_messages',
+  TOKEN: 'cafedaily_token',
 };
+  // Token management
 
 export const storageUtils = {
+  // Token management
+  setToken: (token: string): void => {
+    localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+  },
+
+  getToken: (): string | null => {
+    return localStorage.getItem(STORAGE_KEYS.TOKEN);
+  },
   // User management
   getCurrentUser: (): User | null => {
     const userData = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
