@@ -1,13 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
 import { User } from '../types';
+import { login as apiLogin, register as apiRegister, getMyProfile } from '../utils/api';
 import { storageUtils } from '../utils/localStorage';
+import { auth, googleProvider } from '../utils/firebase';
+import { signInWithPopup, User as FirebaseUser } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: Omit<User, 'id'>) => Promise<boolean>;
+  register: (userData: { name: string; email: string; phone: string; password: string; address: string }) => Promise<boolean>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => void;
+  loginWithGoogle: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,35 +27,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const users = storageUtils.getUsers();
-    const foundUser = users.find(u => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      setUser(foundUser);
-      storageUtils.setCurrentUser(foundUser);
-      return true;
-    }
-    return false;
-  };
 
-  const register = async (userData: Omit<User, 'id'>): Promise<boolean> => {
-    const users = storageUtils.getUsers();
-    const emailExists = users.some(u => u.email === userData.email);
-    
-    if (emailExists) {
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const res = await apiLogin({ email, password });
+      // Nếu BE trả về token dạng text
+      if (res && typeof res === 'string' && res.length > 100) {
+        storageUtils.setToken(res);
+        // Lấy profile từ BE
+        const profile = await getMyProfile(res);
+        if (profile) {
+          setUser(profile);
+          storageUtils.setCurrentUser(profile);
+          return true;
+        }
+      }
+      return false;
+    } catch {
       return false;
     }
+  };
 
-    const newUser: User = {
-      ...userData,
-      id: Date.now().toString(),
-    };
 
-    storageUtils.addUser(newUser);
-    setUser(newUser);
-    storageUtils.setCurrentUser(newUser);
-    return true;
+  const register = async (userData: { name: string; email: string; phone: string; password: string; address: string }): Promise<boolean> => {
+    try {
+      const res = await apiRegister(userData);
+      // Nếu BE trả về token dạng text (giống login)
+      if (res && typeof res === 'string' && res.length > 100) {
+        storageUtils.setToken(res);
+        const profile = await getMyProfile(res);
+        if (profile) {
+          setUser(profile);
+          storageUtils.setCurrentUser(profile);
+        }
+        return true;
+      }
+      // Nếu BE trả về object có token
+      if (res && res.token) {
+        storageUtils.setToken(res.token);
+        const profile = await getMyProfile(res.token);
+        if (profile) {
+          setUser(profile);
+          storageUtils.setCurrentUser(profile);
+        }
+        return true;
+      }
+      // Nếu BE trả về object có success
+      if (res && res.success) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   };
 
   const logout = () => {
@@ -66,8 +95,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Đăng nhập Google
+  const loginWithGoogle = async (): Promise<boolean> => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const firebaseUser: FirebaseUser = result.user;
+      // Tùy vào BE, có thể cần gửi token này lên BE để lấy token hệ thống
+      // Ở đây chỉ lưu thông tin user Google vào localStorage
+      const profile: User = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || '',
+        email: firebaseUser.email || '',
+        phone: firebaseUser.phoneNumber || '',
+        password: '', // Google users don't have a password
+        avatar: firebaseUser.photoURL || undefined,
+      };
+      setUser(profile);
+      storageUtils.setCurrentUser(profile);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateProfile, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

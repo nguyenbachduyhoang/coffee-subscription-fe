@@ -42,3 +42,38 @@ export interface ContactMessage {
   message: string;
   timestamp: string;
 }
+
+// Customer API request types
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  address: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface VerifyRequest {
+  email: string;
+  code: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  newPassword: string;
+  code: string;
+}
+
+export interface UpdateProfileRequest {
+  name?: string;
+  phone?: string;
+  avatar?: string;
+}

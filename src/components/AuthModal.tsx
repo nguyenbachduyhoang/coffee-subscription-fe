@@ -12,7 +12,19 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login, register } = useAuth();
+  const { login, register, loginWithGoogle } = useAuth();
+  // Đăng nhập Google
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    const success = await loginWithGoogle();
+    if (success) {
+      onClose();
+    } else {
+      setError('Đăng nhập Google thất bại');
+    }
+    setLoading(false);
+  };
 
   const [loginData, setLoginData] = useState({
     email: '',
@@ -23,7 +35,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     name: '',
     email: '',
     phone: '',
-    password: ''
+    password: '',
+    address: ''
   });
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -48,12 +61,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError('');
 
     const success = await register(registerData);
-    
     if (success) {
       onClose();
-      setRegisterData({ name: '', email: '', phone: '', password: '' });
+      setRegisterData({ name: '', email: '', phone: '', password: '', address: '' });
     } else {
-      setError('Email đã tồn tại');
+      setError('Email đã tồn tại hoặc thiếu thông tin');
     }
     setLoading(false);
   };
@@ -150,6 +162,18 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     >
                       {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                     </motion.button>
+                    {/* Google Login Button */}
+                    <motion.button
+                      type="button"
+                      onClick={handleGoogleLogin}
+                      disabled={loading}
+                      className="w-full flex items-center justify-center gap-2 mt-2 bg-white border border-gray-300 text-gray-700 py-3 rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 disabled:opacity-50"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 48 48" className="inline-block"><g><path fill="#4285F4" d="M43.6 20.5h-1.9V20H24v8h11.3c-1.6 4.3-5.7 7-10.3 7-6.1 0-11-4.9-11-11s4.9-11 11-11c2.6 0 5 .9 6.9 2.6l6-6C36.1 7.6 30.4 5 24 5 12.9 5 4 13.9 4 25s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.2-.3-3.2z"/><path fill="#34A853" d="M6.3 14.7l6.6 4.8C14.5 16.1 18.8 13 24 13c2.6 0 5 .9 6.9 2.6l6-6C36.1 7.6 30.4 5 24 5c-7.2 0-13.4 4.1-16.7 9.7z"/><path fill="#FBBC05" d="M24 45c6.2 0 11.4-2 15.2-5.4l-7-5.7c-2 1.4-4.5 2.2-8.2 2.2-4.6 0-8.7-2.7-10.3-7H6.2v5.9C9.5 41 16.1 45 24 45z"/><path fill="#EA4335" d="M43.6 20.5h-1.9V20H24v8h11.3c-1.1 3-3.5 5.2-6.3 6.5l7 5.7c-2.8 2.6-6.6 4.3-11 4.3-7.9 0-14.5-4-17.8-10.1l7-5.9c1.6 4.3 5.7 7 10.3 7 2.6 0 5-.9 6.9-2.6l6 6C36.1 40.4 30.4 43 24 43c-11 0-20-8.9-20-20s9-20 20-20c6.4 0 12.1 2.6 16.3 6.7l-6.6 5.2C29 13.9 24 13 24 13c-5.2 0-9.5 3.1-11.1 7.5l-7-5.9C4.5 13.9 12.9 5 24 5c6.4 0 12.1 2.6 16.3 6.7l-6.6 5.2C29 13.9 24 13 24 13c-5.2 0-9.5 3.1-11.1 7.5z"/></g></svg>
+                      Đăng nhập với Google
+                    </motion.button>
                   </motion.form>
                 ) : (
                   <motion.form
@@ -202,6 +226,16 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         value={registerData.password}
                         onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beige focus:border-transparent transition-all duration-200"
+                        required
+                      />
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Địa chỉ"
+                        value={registerData.address}
+                        onChange={(e) => setRegisterData(prev => ({ ...prev, address: e.target.value }))}
+                        className="w-full pl-4 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beige focus:border-transparent transition-all duration-200"
                         required
                       />
                     </div>
