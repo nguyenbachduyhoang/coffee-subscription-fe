@@ -16,6 +16,7 @@ export interface Package {
   features: string[];
   image: string;
   popular?: boolean;
+  durationDays?: number;
 }
 
 export interface PurchaseHistory {
