@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CreditCard, Smartphone, Check } from 'lucide-react';
-import { Package, PaymentData, PurchaseHistory } from '../types';
+import { X, Check, CreditCard, QrCode, Copy, CheckCircle } from 'lucide-react';
+import { Package } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { storageUtils } from '../utils/localStorage';
+import { orderSubscription, OrderSubscriptionResponse } from '../utils/subscriptionsAPI';
+// Removed localStorage purchase tracking; purchases are sourced from backend
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -12,9 +13,13 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'vnpay'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'vnpay'>('vnpay');
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [orderResult, setOrderResult] = useState<OrderSubscriptionResponse | null>(null);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState<string | null>(null);
   const { user } = useAuth();
 
   const [cardData, setCardData] = useState({
@@ -31,35 +36,67 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
     }).format(price);
   };
 
+  const copyToClipboard = async (text: string, type: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedPackage) return;
 
     setLoading(true);
+    setError('');
 
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Call the API to order subscription
+      const result = await orderSubscription(parseInt(selectedPackage.id));
+      
+      if (result.success) {
+        setOrderResult(result);
+        
+        // Show QR code for payment
+        if (paymentMethod === 'vnpay') {
+          setShowQRCode(true);
+        } else {
+          // For card payment, show success directly (mock)
+          setShowSuccess(true);
+          setTimeout(() => {
+            setShowSuccess(false);
+            onClose();
+            resetForm();
+          }, 3000);
+        }
 
-    const purchase: PurchaseHistory = {
-      id: Date.now().toString(),
-      userId: user.id,
-      packageId: selectedPackage.id,
-      packageName: selectedPackage.name,
-      price: selectedPackage.price,
-      purchaseDate: new Date().toISOString(),
-      paymentMethod
-    };
+        // No local persistence: purchase history comes from backend
+      } else {
+        setError('Đặt subscription thất bại. Vui lòng thử lại.');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi đặt subscription.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    storageUtils.addPurchase(purchase);
+  const resetForm = () => {
+    setCardData({ cardHolder: '', cardNumber: '', expiry: '', cvv: '' });
+    setError('');
+    setShowQRCode(false);
+    setOrderResult(null);
+    setCopied(null);
+  };
 
-    setLoading(false);
-    setShowSuccess(true);
-
-    setTimeout(() => {
-      setShowSuccess(false);
-      onClose();
-      setCardData({ cardHolder: '', cardNumber: '', expiry: '', cvv: '' });
-    }, 3000);
+  const handleClose = () => {
+    onClose();
+    resetForm();
   };
 
   if (!selectedPackage) return null;
@@ -72,7 +109,7 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={handleClose}
         >
           <motion.div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto"
@@ -107,11 +144,119 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
                   Cửa sổ này sẽ tự động đóng sau 3 giây...
                 </p>
               </motion.div>
+            ) : showQRCode && orderResult ? (
+              <motion.div
+                className="p-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <div className="text-center mb-6">
+                  <motion.button
+                    onClick={handleClose}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <X className="h-6 w-6" />
+                  </motion.button>
+                  
+                  <QrCode className="h-12 w-12 text-espresso mx-auto mb-4" />
+                  <h3 className="text-2xl font-bold text-espresso mb-2 font-poppins">
+                    Quét mã QR để thanh toán
+                  </h3>
+                  <p className="text-gray-600 mb-4">{orderResult.message}</p>
+                  
+                  <div className="bg-gray-50 p-6 rounded-lg mb-6">
+                    <img 
+                      src={orderResult.qrUrl} 
+                      alt="QR Code thanh toán" 
+                      className="w-64 h-64 mx-auto mb-4 border-2 border-gray-200 rounded-lg"
+                    />
+                    
+                    <div className="text-left space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-white rounded border">
+                        <div>
+                          <span className="text-sm text-gray-600">Ngân hàng:</span>
+                          <p className="font-semibold text-espresso">{orderResult.bankName}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center p-3 bg-white rounded border">
+                        <div className="flex-1">
+                          <span className="text-sm text-gray-600">Số tài khoản:</span>
+                          <p className="font-semibold text-espresso">{orderResult.bankAccount}</p>
+                        </div>
+                        <motion.button
+                          onClick={() => copyToClipboard(orderResult.bankAccount, 'account')}
+                          className="ml-2 p-2 text-gray-500 hover:text-espresso transition-colors"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          {copied === 'account' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </motion.button>
+                      </div>
+                      
+                      <div className="flex justify-between items-center p-3 bg-white rounded border">
+                        <div>
+                          <span className="text-sm text-gray-600">Chủ tài khoản:</span>
+                          <p className="font-semibold text-espresso">{orderResult.accountHolder}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center p-3 bg-white rounded border">
+                        <div className="flex-1">
+                          <span className="text-sm text-gray-600">Nội dung chuyển khoản:</span>
+                          <p className="font-semibold text-red-600">{orderResult.transferContent}</p>
+                        </div>
+                        <motion.button
+                          onClick={() => copyToClipboard(orderResult.transferContent, 'content')}
+                          className="ml-2 p-2 text-gray-500 hover:text-espresso transition-colors"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          {copied === 'content' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </motion.button>
+                      </div>
+                      
+                      <div className="flex justify-between items-center p-3 bg-espresso text-white rounded">
+                        <div className="flex-1">
+                          <span className="text-sm text-latte">Số tiền:</span>
+                          <p className="font-bold text-xl">{formatPrice(orderResult.amount)}</p>
+                        </div>
+                        <motion.button
+                          onClick={() => copyToClipboard(orderResult.amount.toString(), 'amount')}
+                          className="ml-2 p-2 text-latte hover:text-white transition-colors"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          {copied === 'amount' ? <CheckCircle className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Lưu ý:</strong> Vui lòng chuyển khoản đúng số tiền và nội dung để đơn hàng được xử lý tự động.
+                      Subscription của bạn sẽ được kích hoạt sau khi thanh toán thành công.
+                    </p>
+                  </div>
+                  
+                  <motion.button
+                    onClick={handleClose}
+                    className="bg-espresso text-white py-3 px-8 rounded-full font-semibold hover:bg-opacity-90 transition-all duration-300"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Đóng
+                  </motion.button>
+                </div>
+              </motion.div>
             ) : (
               <>
                 {/* Close Button */}
                 <motion.button
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -131,11 +276,35 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
 
                 {/* Payment Method Selection */}
                 <div className="p-6">
+                  {error && (
+                    <motion.div
+                      className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+
                   <h3 className="text-lg font-semibold text-espresso mb-4 font-poppins">
                     Chọn phương thức thanh toán
                   </h3>
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
+                    <motion.button
+                      onClick={() => setPaymentMethod('vnpay')}
+                      className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                        paymentMethod === 'vnpay'
+                          ? 'border-espresso bg-latte'
+                          : 'border-gray-300 hover:border-beige'
+                      }`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <QrCode className="h-6 w-6 mx-auto mb-2 text-espresso" />
+                      <span className="font-medium text-espresso">QR Code</span>
+                    </motion.button>
+
                     <motion.button
                       onClick={() => setPaymentMethod('card')}
                       className={`p-4 rounded-lg border-2 transition-all duration-200 ${
@@ -148,20 +317,6 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
                     >
                       <CreditCard className="h-6 w-6 mx-auto mb-2 text-espresso" />
                       <span className="font-medium text-espresso">Thẻ ngân hàng</span>
-                    </motion.button>
-
-                    <motion.button
-                      onClick={() => setPaymentMethod('vnpay')}
-                      className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                        paymentMethod === 'vnpay'
-                          ? 'border-espresso bg-latte'
-                          : 'border-gray-300 hover:border-beige'
-                      }`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Smartphone className="h-6 w-6 mx-auto mb-2 text-espresso" />
-                      <span className="font-medium text-espresso">VNPay</span>
                     </motion.button>
                   </div>
 
@@ -177,7 +332,7 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
                         exit={{ opacity: 0, x: 20 }}
                       >
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-espresso mb-2">
                             Tên chủ thẻ
                           </label>
                           <input
@@ -190,7 +345,7 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-espresso mb-2">
                             Số thẻ
                           </label>
                           <input
@@ -205,7 +360,7 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-espresso mb-2">
                               Ngày hết hạn
                             </label>
                             <input
@@ -219,7 +374,7 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-espresso mb-2">
                               CVV
                             </label>
                             <input
@@ -252,17 +407,12 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
                         exit={{ opacity: 0, x: -20 }}
                       >
                         <div className="bg-latte p-6 rounded-lg">
-                          <div className="w-32 h-32 bg-white mx-auto mb-4 rounded-lg flex items-center justify-center">
-                            <div className="text-xs text-center">
-                              <div>QR Code</div>
-                              <div>VNPay</div>
-                            </div>
-                          </div>
-                          <p className="text-espresso font-semibold">
-                            Quét mã QR để thanh toán
-                          </p>
-                          <p className="text-gray-600 text-sm mt-2">
-                            Số tiền: {formatPrice(selectedPackage.price)}
+                          <QrCode className="h-16 w-16 text-espresso mx-auto mb-4" />
+                          <h4 className="text-lg font-semibold text-espresso mb-2">
+                            Thanh toán bằng QR Code
+                          </h4>
+                          <p className="text-gray-600 text-sm">
+                            Nhấn "Tạo QR Code" để tạo mã thanh toán và quét bằng ứng dụng ngân hàng của bạn
                           </p>
                         </div>
 
@@ -273,7 +423,7 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          {loading ? 'Đang xử lý...' : 'Xác nhận đã thanh toán'}
+                          {loading ? 'Đang tạo QR Code...' : `Tạo QR Code - ${formatPrice(selectedPackage.price)}`}
                         </motion.button>
                       </motion.div>
                     )}

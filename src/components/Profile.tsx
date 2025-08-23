@@ -1,12 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Edit3, History, Calendar } from 'lucide-react';
 import { storageUtils } from '../utils/localStorage';
-import { packages } from '../data/packages';
 import * as api from '../utils/api';
+import { getUserSubscriptions, UserSubscriptionItem } from '../utils/subscriptionsAPI';
+import { PurchaseHistory } from '../types';
+
+interface ProfileUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
 
 export function Profile() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<ProfileUser | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     name: '',
@@ -17,6 +26,9 @@ export function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+  const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistory[]>([]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -39,19 +51,42 @@ export function Profile() {
             phone: data.phone || '',
             address: data.address || ''
           });
+          // Fetch purchase history from backend subscriptions API
+          try {
+            const subs: UserSubscriptionItem[] = await getUserSubscriptions();
+            const activeSubs = subs.filter((s) => (s.status || '').toLowerCase() === 'active');
+            const items: PurchaseHistory[] = activeSubs.map((s) => ({
+              id: s.subscriptionId,
+              userId: data.id,
+              packageId: String(s.planId || ''),
+              packageName: s.planName,
+              price: Number(s.price) || 0,
+              purchaseDate: s.startDate || s.endDate || new Date().toISOString(),
+              paymentMethod: 'vnpay',
+            }));
+            setPurchaseHistory(items);
+          } catch {
+            setPurchaseHistory([]);
+          }
         } else {
           setUser(null);
+          setPurchaseHistory([]);
         }
-      } catch (err) {
+      } catch {
         setError('Không thể tải thông tin cá nhân.');
         setUser(null);
+        setPurchaseHistory([]);
       }
       setLoading(false);
     };
     fetchProfile();
   }, []);
 
-  const purchaseHistory = user ? storageUtils.getPurchaseHistory(user.id) : [];
+  const totalPages = Math.max(1, Math.ceil(purchaseHistory.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentItems = purchaseHistory.slice(startIndex, endIndex);
 
   const handleSave = async () => {
     setError('');
@@ -65,13 +100,16 @@ export function Profile() {
       }
       const res = await api.updateProfile(editData, token);
       if (res && res.success !== false) {
-        setUser({ ...user, ...editData });
+        if (user) {
+          const updatedUser: ProfileUser = { ...user, ...editData };
+          setUser(updatedUser);
+        }
         setSuccess('Cập nhật thành công!');
         setIsEditing(false);
       } else {
         setError(res?.message || 'Cập nhật thất bại.');
       }
-    } catch (err) {
+    } catch {
       setError('Có lỗi xảy ra khi cập nhật.');
     }
   };
@@ -252,7 +290,7 @@ export function Profile() {
 
               {purchaseHistory.length > 0 ? (
                 <div className="space-y-4">
-                  {purchaseHistory.map((purchase) => (
+                  {currentItems.map((purchase) => (
                     <motion.div
                       key={purchase.id}
                       className="bg-latte p-6 rounded-lg border border-beige"
@@ -283,6 +321,37 @@ export function Profile() {
                       </div>
                     </motion.div>
                   ))}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        className="px-3 py-2 rounded-full border border-gray-300 text-espresso disabled:opacity-50"
+                        disabled={safePage === 1}
+                      >
+                        Trước
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-10 h-10 rounded-full text-sm font-semibold transition-colors ${
+                            page === safePage
+                              ? 'bg-espresso text-white'
+                              : 'bg-white border border-gray-300 text-espresso hover:border-espresso'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        className="px-3 py-2 rounded-full border border-gray-300 text-espresso disabled:opacity-50"
+                        disabled={safePage === totalPages}
+                      >
+                        Tiếp
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-12 text-gray-500">

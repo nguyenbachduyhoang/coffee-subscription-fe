@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -6,6 +6,7 @@ import { Packages } from './components/Packages';
 import { Benefits } from './components/Benefits';
 import { Contact } from './components/Contact';
 import { Profile } from './components/Profile';
+import { Subscription } from './components/Subscription';
 import { AuthModal } from './components/AuthModal';
 import { PaymentModal } from './components/PaymentModal';
 import { Footer } from './components/Footer';
@@ -21,12 +22,12 @@ function AppContent() {
   const handleSectionChange = (section: string) => {
     setActiveSection(section);
     
-    if (section === 'profile' && !user) {
+    if ((section === 'profile' || section === 'subscription') && !user) {
       setShowAuthModal(true);
       return;
     }
 
-    if (section !== 'profile') {
+    if (section !== 'profile' && section !== 'subscription') {
       const element = document.getElementById(section);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
@@ -67,6 +68,8 @@ function AppContent() {
 
       {activeSection === 'profile' && user ? (
         <Profile />
+      ) : activeSection === 'subscription' && user ? (
+        <Subscription />
       ) : (
         <>
           <Hero onShowPackages={handleShowPackages} />

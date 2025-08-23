@@ -66,6 +66,12 @@ export const storageUtils = {
     localStorage.setItem(STORAGE_KEYS.PURCHASE_HISTORY, JSON.stringify(history));
   },
 
+  removePurchase: (purchaseId: string): void => {
+    const history = storageUtils.getPurchaseHistory();
+    const filtered = history.filter((p: PurchaseHistory) => p.id !== purchaseId);
+    localStorage.setItem(STORAGE_KEYS.PURCHASE_HISTORY, JSON.stringify(filtered));
+  },
+
   // Contact messages
   getContactMessages: (): ContactMessage[] => {
     const messages = localStorage.getItem(STORAGE_KEYS.CONTACT_MESSAGES);
