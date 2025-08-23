@@ -29,46 +29,49 @@ axiosInstance.interceptors.request.use(request => {
 });
 
 export const getCustomerById = (id: string, token: string) =>
-  axiosInstance.get(`/api/Customer/get-customer-by-id/${id}`, {
+  axiosInstance.get(`/api/customers/${id}`, {
     headers: { Authorization: `Bearer ${token}` }
   }).then(res => res.data);
 
 export const getMyProfile = (token: string) =>
-  axiosInstance.get('/api/Customer/my-profile', {
+  axiosInstance.get('/api/customers/my-profile', {
     headers: { Authorization: `Bearer ${token}` }
   }).then(res => res.data);
 
 export const register = async (data: RegisterRequest) => {
-  const response = await axiosInstance.post('/api/Customer/register', data);
+  const response = await axiosInstance.post('/api/customers/register', data);
   // return status and data so callers can make robust decisions
   return { status: response.status, data: response.data };
 };
 
 export const login = async (data: LoginRequest) => {
   try {
-    const response = await axiosInstance.post('/api/Customer/login', data);
+    const response = await axiosInstance.post('/api/customers/login', data);
     console.log('Raw login response:', response);
     return response.data;
-  } catch (error) {
-    console.error('Login API error:', error);
+  } catch (error: any) {
+    console.error('Login API error:', error.response?.data || error.message);
+    if (error.response?.status === 404) {
+      throw new Error('API endpoint not found. Please check the URL.');
+    }
     throw error;
   }
 };
 
 export const verify = (data: VerifyRequest) =>
-  axiosInstance.post('/api/Customer/verify', data)
+  axiosInstance.post('/api/customers/verify', data)
     .then(res => res.data);
 
 export const forgotPassword = (data: ForgotPasswordRequest) =>
-  axiosInstance.post('/api/Customer/forgot-password', data)
+  axiosInstance.post('/api/customers/forgot-password', data)
     .then(res => res.data);
 
 export const resetPassword = (data: ResetPasswordRequest) =>
-  axiosInstance.post('/api/Customer/reset-password', data)
+  axiosInstance.post('/api/customers/reset-password', data)
     .then(res => res.data);
 
 
 export const updateProfile = (data: UpdateProfileRequest, token: string) =>
-  axiosInstance.post('/api/Customer/update-profile', data, {
+  axiosInstance.post('/api/customers/my-profile', data, {
     headers: { Authorization: `Bearer ${token}` },
   }).then(res => res.data);
