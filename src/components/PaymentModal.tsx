@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, CreditCard, QrCode, Copy, CheckCircle } from 'lucide-react';
 import { Package } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { orderSubscription, OrderSubscriptionResponse } from '../utils/subscriptionsAPI';
+import { orderSubscription, OrderSubscriptionResponse, getUserSubscriptions } from '../utils/subscriptionsAPI';
 // Removed localStorage purchase tracking; purchases are sourced from backend
 
 interface PaymentModalProps {
@@ -21,6 +21,8 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
   const { user } = useAuth();
+  const [polling, setPolling] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [cardData, setCardData] = useState({
     cardHolder: '',
@@ -63,6 +65,7 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
         // Show QR code for payment
         if (paymentMethod === 'vnpay') {
           setShowQRCode(true);
+          setPolling(true);
         } else {
           // For card payment, show success directly (mock)
           setShowSuccess(true);
@@ -86,12 +89,53 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
     }
   };
 
+  // Poll backend to detect when the just-created subscription becomes Active
+  useEffect(() => {
+    const shouldStart = isOpen && showQRCode && !!orderResult?.data?.subscriptionId && polling;
+    if (!shouldStart) return;
+
+    const subscriptionId = String(orderResult!.data.subscriptionId);
+    intervalRef.current = setInterval(async () => {
+      try {
+        const subs = await getUserSubscriptions();
+        const sub = subs.find(s => String(s.subscriptionId) === subscriptionId);
+        if (sub && sub.status.toLowerCase() === 'active') {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          setPolling(false);
+          setShowSuccess(true);
+          setTimeout(() => {
+            setShowSuccess(false);
+            onClose();
+            resetForm();
+          }, 2500);
+        }
+      } catch {
+        // ignore polling errors; will try again on next tick
+      }
+    }, 4000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isOpen, showQRCode, orderResult?.data?.subscriptionId, polling]);
+
   const resetForm = () => {
     setCardData({ cardHolder: '', cardNumber: '', expiry: '', cvv: '' });
     setError('');
     setShowQRCode(false);
     setOrderResult(null);
     setCopied(null);
+    setPolling(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   };
 
   const handleClose = () => {
