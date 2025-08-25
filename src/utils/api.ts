@@ -49,13 +49,27 @@ export const login = async (data: LoginRequest) => {
     const response = await axiosInstance.post('/api/customers/login', data);
     console.log('Raw login response:', response);
     return response.data;
-  } catch (error: any) {
-    console.error('Login API error:', error.response?.data || error.message);
-    if (error.response?.status === 404) {
-      throw new Error('API endpoint not found. Please check the URL.');
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('Login API error:', error.response?.data || error.message);
+      if (error.response?.status === 404) {
+        throw new Error('API endpoint not found. Please check the URL.');
+      }
+      throw error;
+    }
+    if (error instanceof Error) {
+      console.error('Login API error:', error.message);
+    } else {
+      console.error('Login API error:', error);
     }
     throw error;
   }
+};
+
+// Login with Firebase Google ID token -> backend JWT
+export const loginWithGoogle = async (idToken: string) => {
+  const response = await axiosInstance.post('/api/customers/login-google', { idToken });
+  return response.data;
 };
 
 export const verify = (data: VerifyRequest) =>

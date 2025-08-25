@@ -18,7 +18,11 @@ interface UserSubscription {
   remainingDays?: number | null;
 }
 
-export function Subscription() {
+interface SubscriptionProps {
+  onShowPackages?: () => void;
+}
+
+export function Subscription({ onShowPackages }: SubscriptionProps) {
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -216,7 +220,7 @@ export function Subscription() {
                 Bạn chưa có gói subscription nào. Hãy chọn một gói phù hợp để bắt đầu trải nghiệm dịch vụ của chúng tôi.
               </p>
               <motion.button
-                onClick={() => window.location.hash = 'packages'}
+                onClick={() => onShowPackages ? onShowPackages() : (window.location.hash = 'packages')}
                 className="bg-espresso text-white px-8 py-3 rounded-full font-semibold hover:bg-opacity-90 transition-all duration-300"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

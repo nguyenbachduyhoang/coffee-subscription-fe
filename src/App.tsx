@@ -69,7 +69,7 @@ function AppContent() {
       {activeSection === 'profile' && user ? (
         <Profile />
       ) : activeSection === 'subscription' && user ? (
-        <Subscription />
+        <Subscription onShowPackages={handleShowPackages} />
       ) : (
         <>
           <Hero onShowPackages={handleShowPackages} />

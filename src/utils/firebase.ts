@@ -3,11 +3,11 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyD471Kn5MPoyqpr4VMtjWUVD5ZcjH9tmAQ',
-  authDomain: 'swd392-8a6e9.firebaseapp.com',
-  projectId: 'swd392-8a6e9',
-  storageBucket: 'swd392-8a6e9.appspot.com',
-  messagingSenderId: '424138218822',
+  apiKey: 'AIzaSyAUoNGXwJ9gWu79L0_xX4x2u5fsRaqL9TU',
+  authDomain: 'coffee-2e61f.firebaseapp.com',
+  projectId: 'coffee-2e61f',
+  storageBucket: 'coffee-2e61f.appspot.com',
+  messagingSenderId: '858853049962',
 };
 
 const app = initializeApp(firebaseConfig);

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import axios from 'axios';
 
 import { User } from '../types';
-import { login as apiLogin, register as apiRegister, getMyProfile, verify as apiVerify } from '../utils/api';
+import { login as apiLogin, register as apiRegister, getMyProfile, verify as apiVerify, loginWithGoogle as apiLoginWithGoogle } from '../utils/api';
 import { storageUtils } from '../utils/localStorage';
 import { auth, googleProvider } from '../utils/firebase';
 import { signInWithPopup, User as FirebaseUser } from 'firebase/auth';
@@ -88,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     storageUtils.setCurrentUser(null);
+    storageUtils.removeToken();
   };
 
   const updateProfile = (userData: Partial<User>) => {
@@ -98,26 +100,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Đăng nhập Google
+  // Đăng nhập Google -> đổi Firebase ID token lấy JWT nội bộ
   const loginWithGoogle = async (): Promise<boolean> => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser: FirebaseUser = result.user;
-      // Tùy vào BE, có thể cần gửi token này lên BE để lấy token hệ thống
-      // Ở đây chỉ lưu thông tin user Google vào localStorage
-      const profile: User = {
-        id: firebaseUser.uid,
-        name: firebaseUser.displayName || '',
-        email: firebaseUser.email || '',
-        phone: firebaseUser.phoneNumber || '',
-        password: '', // Google users don't have a password
-        address: '',
-        avatar: firebaseUser.photoURL || undefined,
-      };
-      setUser(profile);
-      storageUtils.setCurrentUser(profile);
-      return true;
-    } catch {
+      const idToken = await firebaseUser.getIdToken();
+
+      // Gọi BE để verify và lấy JWT nội bộ
+      const data = await apiLoginWithGoogle(idToken);
+      const token = data && (data.token || data);
+      if (!token) return false;
+
+      storageUtils.setToken(token);
+      try {
+        const profile = await getMyProfile(token);
+        if (profile) {
+          setUser(profile);
+          storageUtils.setCurrentUser(profile);
+          return true;
+        }
+      } catch (profileError) {
+        console.error('Error fetching profile after Google login:', profileError);
+      }
+      return false;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        console.error('Google login error:', err.response?.status, err.response?.data || err.message);
+      } else {
+        console.error('Google login error:', err);
+      }
       return false;
     }
   };

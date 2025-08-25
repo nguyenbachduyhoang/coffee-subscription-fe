@@ -18,6 +18,9 @@ export const storageUtils = {
   getToken: (): string | null => {
     return localStorage.getItem(STORAGE_KEYS.TOKEN);
   },
+  removeToken: (): void => {
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  },
   // User management
   getCurrentUser: (): User | null => {
     const userData = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
