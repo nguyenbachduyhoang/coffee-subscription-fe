@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Coffee, User, Menu, X } from 'lucide-react';
+import { Coffee, User, Menu, X, Bell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useEffect as useReactEffect, useState as useReactState } from 'react';
+import { getMyNotifications } from '../utils/notificationsAPI';
 
 interface HeaderProps {
   activeSection: string;
@@ -13,6 +15,8 @@ export function Header({ activeSection, onSectionChange, onShowAuth }: HeaderPro
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useReactState<number>(0);
+  const [showPing, setShowPing] = useReactState<boolean>(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,6 +27,42 @@ export function Header({ activeSection, onSectionChange, onShowAuth }: HeaderPro
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Lightweight polling for unread notifications when logged in
+  useReactEffect(() => {
+    let timer: number | undefined;
+    const fetchUnread = async () => {
+      try {
+        if (!user) {
+          setUnreadCount(0);
+          return;
+        }
+        const list = await getMyNotifications();
+        const unread = list.filter(n => n.isRead === false).length;
+        setUnreadCount(unread);
+      } catch {
+        // silent fail; keep last known count
+      }
+    };
+    fetchUnread();
+    if (user) {
+      timer = window.setInterval(fetchUnread, 60000);
+      const onNotify = () => {
+        fetchUnread();
+        setShowPing(true);
+        window.setTimeout(() => setShowPing(false), 5000);
+      };
+      window.addEventListener('notifications:new', onNotify as EventListener);
+      // Clean up event listener
+      return () => {
+        if (timer) window.clearInterval(timer);
+        window.removeEventListener('notifications:new', onNotify as EventListener);
+      };
+    }
+    return () => {
+      if (timer) window.clearInterval(timer);
+    };
+  }, [user]);
+
   const menuItems = [
     { id: 'home', label: 'Trang chủ' },
     { id: 'packages', label: 'Gói dịch vụ' },
@@ -30,10 +70,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth }: HeaderPro
     { id: 'contact', label: 'Liên hệ' },
   ];
 
-  const userMenuItems = [
-    { id: 'profile', label: 'Profile', requireAuth: true },
-    { id: 'subscription', label: 'Subscription', requireAuth: true },
-  ];
+  // Keep simple explicit buttons below; list removed to avoid unused var
 
   const handleSectionClick = (sectionId: string) => {
     onSectionChange(sectionId);
@@ -125,6 +162,33 @@ export function Header({ activeSection, onSectionChange, onShowAuth }: HeaderPro
                 </motion.button>
 
                 <motion.button
+                  onClick={() => handleSectionClick('notifications')}
+                  className={`relative flex items-center justify-center h-10 w-10 rounded-full transition-colors duration-200 ${
+                    activeSection === 'notifications'
+                      ? 'bg-beige text-espresso'
+                      : isScrolled
+                      ? 'bg-espresso text-white hover:bg-opacity-90'
+                      : 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
+                  }`}
+                  aria-label="Notifications"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Bell className="h-5 w-5" />
+                  {showPing && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                  )}
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </motion.button>
+
+                <motion.button
                   onClick={logout}
                   className={`px-4 py-2 rounded-full border transition-colors duration-200 ${
                     isScrolled
@@ -213,6 +277,32 @@ export function Header({ activeSection, onSectionChange, onShowAuth }: HeaderPro
                     }`}
                   >
                     Subscription
+                  </button>
+                  <button
+                    onClick={() => handleSectionClick('notifications')}
+                    className={`flex items-center gap-2 text-left font-medium font-poppins transition-colors duration-200 ${
+                      activeSection === 'notifications'
+                        ? 'text-beige'
+                        : isScrolled
+                        ? 'text-espresso hover:text-beige'
+                        : 'text-white hover:text-beige'
+                    }`}
+                  >
+                    <span className="relative inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/20">
+                      <Bell className="h-5 w-5" />
+                      {showPing && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                      )}
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </span>
+                    Thông báo
                   </button>
                   <button
                     onClick={logout}

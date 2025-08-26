@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, CreditCard, QrCode, Copy, CheckCircle } from 'lucide-react';
 import { Package } from '../types';
@@ -23,6 +23,12 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
   const { user } = useAuth();
   const [polling, setPolling] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Memoize to satisfy exhaustive-deps while avoiding unnecessary reruns
+  const subscriptionId = useMemo(() => {
+    const id = orderResult?.data?.subscriptionId;
+    return id != null ? String(id) : null;
+  }, [orderResult]);
 
   const [cardData, setCardData] = useState({
     cardHolder: '',
@@ -77,6 +83,11 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
         }
 
         // No local persistence: purchase history comes from backend
+        try {
+          // Fire a lightweight custom event so the header badge updates immediately
+          const evt = new CustomEvent('notifications:new');
+          window.dispatchEvent(evt);
+        } catch (err) { void err; }
       } else {
         setError('Đặt subscription thất bại. Vui lòng thử lại.');
       }
@@ -91,10 +102,9 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
 
   // Poll backend to detect when the just-created subscription becomes Active
   useEffect(() => {
-    const shouldStart = isOpen && showQRCode && !!orderResult?.data?.subscriptionId && polling;
+    const shouldStart = isOpen && showQRCode && !!subscriptionId && polling;
     if (!shouldStart) return;
 
-    const subscriptionId = String(orderResult!.data.subscriptionId);
     intervalRef.current = setInterval(async () => {
       try {
         const subs = await getUserSubscriptions();
@@ -106,6 +116,10 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
           }
           setPolling(false);
           setShowSuccess(true);
+          try {
+            const evt = new CustomEvent('notifications:new');
+            window.dispatchEvent(evt);
+          } catch (err) { void err; }
           setTimeout(() => {
             setShowSuccess(false);
             onClose();
@@ -123,7 +137,7 @@ export function PaymentModal({ isOpen, onClose, selectedPackage }: PaymentModalP
         intervalRef.current = null;
       }
     };
-  }, [isOpen, showQRCode, orderResult?.data?.subscriptionId, polling]);
+  }, [isOpen, showQRCode, subscriptionId, polling, onClose]);
 
   const resetForm = () => {
     setCardData({ cardHolder: '', cardNumber: '', expiry: '', cvv: '' });

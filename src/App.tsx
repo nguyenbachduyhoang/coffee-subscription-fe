@@ -11,6 +11,7 @@ import { AuthModal } from './components/AuthModal';
 import { PaymentModal } from './components/PaymentModal';
 import { Footer } from './components/Footer';
 import { Package } from './types';
+import Notifications from './components/Notifications';
 
 function AppContent() {
   const [activeSection, setActiveSection] = useState('home');
@@ -22,12 +23,12 @@ function AppContent() {
   const handleSectionChange = (section: string) => {
     setActiveSection(section);
     
-    if ((section === 'profile' || section === 'subscription') && !user) {
+    if ((section === 'profile' || section === 'subscription' || section === 'notifications') && !user) {
       setShowAuthModal(true);
       return;
     }
 
-    if (section !== 'profile' && section !== 'subscription') {
+    if (section !== 'profile' && section !== 'subscription' && section !== 'notifications') {
       const element = document.getElementById(section);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
@@ -70,6 +71,8 @@ function AppContent() {
         <Profile />
       ) : activeSection === 'subscription' && user ? (
         <Subscription onShowPackages={handleShowPackages} />
+      ) : activeSection === 'notifications' && user ? (
+        <Notifications />
       ) : (
         <>
           <Hero onShowPackages={handleShowPackages} />
