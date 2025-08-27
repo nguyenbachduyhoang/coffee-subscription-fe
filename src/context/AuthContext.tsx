@@ -100,15 +100,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Đăng nhập Google -> đổi Firebase ID token lấy JWT nội bộ
+  // Đăng nhập Google -> gửi Google OAuth ID token (nếu có) hoặc Firebase ID token
   const loginWithGoogle = async (): Promise<boolean> => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser: FirebaseUser = result.user;
-      const idToken = await firebaseUser.getIdToken();
+      // Lấy Google OAuth ID token nếu backend mong đợi token của Google
+      const { GoogleAuthProvider } = await import('firebase/auth');
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const googleIdToken = credential?.idToken || undefined;
+      // Fallback: ép refresh lấy Firebase ID token
+      const firebaseIdToken = await firebaseUser.getIdToken(true);
 
-      // Gọi BE để verify và lấy JWT nội bộ
-      const data = await apiLoginWithGoogle(idToken);
+      const tokenToSend = googleIdToken || firebaseIdToken;
+      if (!tokenToSend) {
+        console.error('No ID token obtained from Google/Firebase');
+        return false;
+      }
+      console.log('Using token type:', googleIdToken ? 'googleIdToken' : 'firebaseIdToken');
+      const data = await apiLoginWithGoogle(tokenToSend);
       const token = data && (data.token || data);
       if (!token) return false;
 
