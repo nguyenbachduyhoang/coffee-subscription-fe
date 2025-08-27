@@ -90,7 +90,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth, onShowNotif
       transition={{ duration: 0.6 }}
     >
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between">
+        <div className="relative grid grid-cols-[auto_1fr_auto] items-center gap-4">
           {/* Logo */}
           <motion.div 
             className="flex items-center space-x-2 cursor-pointer"
@@ -107,7 +107,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth, onShowNotif
           </motion.div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center justify-center space-x-8 absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
             {menuItems.map((item) => (
               <motion.button
                 key={item.id}
@@ -128,12 +128,12 @@ export function Header({ activeSection, onSectionChange, onShowAuth, onShowNotif
           </nav>
 
           {/* User Section */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center justify-end space-x-3">
             {user ? (
               <div className="flex items-center space-x-3">
                 <motion.button
                   onClick={() => handleSectionClick('profile')}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-colors duration-200 ${
+                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-colors duration-200 ${
                     activeSection === 'profile'
                       ? 'bg-beige text-espresso'
                       : isScrolled
@@ -149,7 +149,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth, onShowNotif
                 
                 <motion.button
                   onClick={() => handleSectionClick('subscription')}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-colors duration-200 ${
+                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-colors duration-200 ${
                     activeSection === 'subscription'
                       ? 'bg-beige text-espresso'
                       : isScrolled
@@ -164,7 +164,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth, onShowNotif
 
                 <motion.button
                   onClick={() => (onShowNotifications ? onShowNotifications() : handleSectionClick('notifications'))}
-                  className={`relative flex items-center justify-center h-10 w-10 rounded-full transition-colors duration-200 ${
+                  className={`relative flex items-center justify-center h-9 w-9 rounded-full transition-colors duration-200 ${
                     activeSection === 'notifications'
                       ? 'bg-beige text-espresso'
                       : isScrolled
@@ -191,7 +191,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth, onShowNotif
 
                 <motion.button
                   onClick={logout}
-                  className={`px-4 py-2 rounded-full border transition-colors duration-200 ${
+                  className={`px-3 py-1.5 rounded-full border transition-colors duration-200 ${
                     isScrolled
                       ? 'border-espresso text-espresso hover:bg-espresso hover:text-white'
                       : 'border-white text-white hover:bg-white hover:text-espresso'
@@ -205,7 +205,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth, onShowNotif
             ) : (
               <motion.button
                 onClick={onShowAuth}
-                className={`px-6 py-2 rounded-full font-medium transition-colors duration-200 ${
+                className={`px-5 py-1.5 rounded-full font-medium transition-colors duration-200 ${
                   isScrolled
                     ? 'bg-espresso text-white hover:bg-opacity-90'
                     : 'bg-white text-espresso hover:bg-opacity-90'
