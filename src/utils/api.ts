@@ -72,6 +72,12 @@ export const login = async (data: LoginRequest) => {
 
 // Login with Firebase Google ID token -> backend JWT
 export const loginWithGoogle = async (idToken: string) => {
+  if (!idToken || typeof idToken !== 'string') {
+    throw new Error('Missing Google ID token');
+  }
+  // Debug: log token shape without exposing full token
+  const preview = `${idToken.split('.')[0] || ''}...(${idToken.length} chars)`;
+  console.log('Sending Google ID token to backend:', preview);
   const response = await axiosInstance.post('/api/customers/login-google', { idToken });
   return response.data;
 };
