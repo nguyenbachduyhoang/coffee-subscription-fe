@@ -75,6 +75,10 @@ export const loginWithGoogle = async (idToken: string) => {
   if (!idToken || typeof idToken !== 'string') {
     throw new Error('Missing Google ID token');
   }
+  // Quick JWT format check (three segments)
+  if (idToken.split('.').length !== 3) {
+    console.warn('ID token does not look like a JWT (segments != 3)');
+  }
   // Debug: log token shape without exposing full token
   const preview = `${idToken.split('.')[0] || ''}...(${idToken.length} chars)`;
   console.log('Sending Google ID token to backend:', preview);
