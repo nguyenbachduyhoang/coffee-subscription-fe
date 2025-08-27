@@ -1,4 +1,5 @@
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
+import { axiosInstance } from './api';
 import { storageUtils } from './localStorage';
 
 // API Response interfaces
@@ -53,17 +54,9 @@ interface ApiErrorResponse {
   details?: string;
 }
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://minhkhoi02-001-site1.anytempurl.com';
+// Base URL is managed centrally in axiosInstance (utils/api.ts)
 
-const subscriptionApiInstance = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10000,
-  withCredentials: false,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
-});
+const subscriptionApiInstance = axiosInstance;
 
 // Add request interceptor for debugging
 subscriptionApiInstance.interceptors.request.use(request => {

@@ -8,11 +8,15 @@ import {
 } from '../types';
 import axios from 'axios';
 
-console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL);
+console.log('API Base URL env:', import.meta.env.VITE_API_BASE_URL);
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://minhkhoi02-001-site1.anytempurl.com';
+const isProduction = typeof window !== 'undefined' && window.location.protocol === 'https:';
+const DEFAULT_DEV_API = 'http://minhkhoi02-001-site1.anytempurl.com';
+// In production (Vercel), use relative base '' so requests hit the same origin
+// and are proxied by vercel.json rewrites to the HTTP backend.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || (isProduction ? '' : DEFAULT_DEV_API);
 
-const axiosInstance = axios.create({
+export const axiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
   withCredentials: false,

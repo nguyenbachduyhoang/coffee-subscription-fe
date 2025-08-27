@@ -1,4 +1,5 @@
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
+import { axiosInstance } from './api';
 import { Package } from '../types';
 
 // API Response interfaces
@@ -15,17 +16,10 @@ interface PlanApiResponse {
   active: boolean;
 }
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://minhkhoi02-001-site1.anytempurl.com';
+// Base URL is managed centrally in axiosInstance (utils/api.ts)
 
-const planApiInstance = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10000,
-  withCredentials: false,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
-});
+// Use shared axiosInstance but keep possibility to override baseURL in dev
+const planApiInstance = axiosInstance;
 
 // Add request interceptor for debugging
 planApiInstance.interceptors.request.use(request => {

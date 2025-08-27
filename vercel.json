@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "http://minhkhoi02-001-site1.anytempurl.com/api/:path*" }
+  ]
+}
+
