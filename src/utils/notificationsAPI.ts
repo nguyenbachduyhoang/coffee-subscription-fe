@@ -1,4 +1,5 @@
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
+import { axiosInstance } from './api';
 import { storageUtils } from './localStorage';
 
 // Shape is flexible because backend may evolve. Use optional fields and pass-through mapping.
@@ -15,17 +16,9 @@ export interface NotificationItem {
   [key: string]: unknown;
 }
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://minhkhoi02-001-site1.anytempurl.com';
+// Base URL is managed centrally in axiosInstance (utils/api.ts)
 
-const notificationsApiInstance = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10000,
-  withCredentials: false,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
-});
+const notificationsApiInstance = axiosInstance;
 
 notificationsApiInstance.interceptors.request.use(request => {
   console.log('Notifications API Request:', (request.baseURL || '') + (request.url || ''));
