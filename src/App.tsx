@@ -11,12 +11,13 @@ import { AuthModal } from './components/AuthModal';
 import { PaymentModal } from './components/PaymentModal';
 import { Footer } from './components/Footer';
 import { Package } from './types';
-import Notifications from './components/Notifications';
+import Notifications, { NotificationsPopover } from './components/Notifications';
 
 function AppContent() {
   const [activeSection, setActiveSection] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showNotificationsPopover, setShowNotificationsPopover] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const { user } = useAuth();
 
@@ -58,6 +59,13 @@ function AppContent() {
   const handleShowAuth = () => {
     setShowAuthModal(true);
   };
+  const handleShowNotifications = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    setShowNotificationsPopover(true);
+  };
 
   return (
     <div className="font-poppins">
@@ -65,6 +73,7 @@ function AppContent() {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         onShowAuth={handleShowAuth}
+        onShowNotifications={handleShowNotifications}
       />
 
       {activeSection === 'profile' && user ? (
@@ -93,6 +102,12 @@ function AppContent() {
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         selectedPackage={selectedPackage}
+      />
+
+      {/* Small popover under bell icon */}
+      <NotificationsPopover
+        isOpen={showNotificationsPopover}
+        onClose={() => setShowNotificationsPopover(false)}
       />
     </div>
   );

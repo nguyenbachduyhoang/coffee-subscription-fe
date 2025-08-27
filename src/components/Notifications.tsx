@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { getMyNotifications, NotificationItem } from '../utils/notificationsAPI';
 
 const formatRelativeTime = (iso?: string): string => {
@@ -45,7 +46,7 @@ const typeToStyle = (type?: string) => {
   return { badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' };
 };
 
-const NotificationCard = ({ item }: { item: NotificationItem }) => {
+export const NotificationCard = ({ item }: { item: NotificationItem }) => {
   const styles = typeToStyle(item.type);
   return (
     <div className="group rounded-xl border border-gray-200 p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -71,7 +72,7 @@ const NotificationCard = ({ item }: { item: NotificationItem }) => {
   );
 };
 
-export default function Notifications() {
+export function NotificationsView({ variant = 'page' }: { variant?: 'page' | 'panel' } = {}) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,9 +117,8 @@ export default function Notifications() {
 
   const unreadCount = items.filter(n => n.isRead === false).length;
 
-  return (
-    <section className="max-w-3xl mx-auto px-4 py-8">
-      <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-gradient-to-br from-beige/30 to-white">
+  const content = (
+    <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-gradient-to-br from-beige/30 to-white">
         <div className="px-6 py-5 border-b border-gray-200 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between bg-white/70 backdrop-blur">
           <div>
             <h3 className="text-2xl font-bold text-espresso">Thông báo</h3>
@@ -165,7 +165,73 @@ export default function Notifications() {
           )}
         </div>
       </div>
-    </section>
+  );
+
+  if (variant === 'panel') {
+    return content;
+  }
+  return (
+    <section className="max-w-3xl mx-auto px-4 py-8">{content}</section>
+  );
+}
+
+export default function Notifications() {
+  // Keep default export for existing route/section usage
+  return <NotificationsView />;
+}
+
+export function NotificationsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <motion.div
+            className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 250 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <NotificationsView />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export function NotificationsPopover({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <div className="absolute inset-0" />
+          <motion.div
+            className="absolute top-16 right-6 w-[420px] max-w-[92vw] max-h-[75vh] overflow-auto rounded-2xl shadow-2xl border bg-white"
+            initial={{ y: -8, opacity: 0, scale: 0.98 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: -8, opacity: 0, scale: 0.98 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 250 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <NotificationsView variant="panel" />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

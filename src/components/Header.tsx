@@ -9,9 +9,10 @@ interface HeaderProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   onShowAuth: () => void;
+  onShowNotifications?: () => void;
 }
 
-export function Header({ activeSection, onSectionChange, onShowAuth }: HeaderProps) {
+export function Header({ activeSection, onSectionChange, onShowAuth, onShowNotifications }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
@@ -162,7 +163,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth }: HeaderPro
                 </motion.button>
 
                 <motion.button
-                  onClick={() => handleSectionClick('notifications')}
+                  onClick={() => (onShowNotifications ? onShowNotifications() : handleSectionClick('notifications'))}
                   className={`relative flex items-center justify-center h-10 w-10 rounded-full transition-colors duration-200 ${
                     activeSection === 'notifications'
                       ? 'bg-beige text-espresso'
@@ -279,7 +280,7 @@ export function Header({ activeSection, onSectionChange, onShowAuth }: HeaderPro
                     Subscription
                   </button>
                   <button
-                    onClick={() => handleSectionClick('notifications')}
+                    onClick={() => (onShowNotifications ? onShowNotifications() : handleSectionClick('notifications'))}
                     className={`flex items-center gap-2 text-left font-medium font-poppins transition-colors duration-200 ${
                       activeSection === 'notifications'
                         ? 'text-beige'
