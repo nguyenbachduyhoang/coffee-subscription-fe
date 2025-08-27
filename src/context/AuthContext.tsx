@@ -105,19 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser: FirebaseUser = result.user;
-      // Lấy Google OAuth ID token nếu backend mong đợi token của Google
-      const { GoogleAuthProvider } = await import('firebase/auth');
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const googleIdToken = credential?.idToken || undefined;
-      // Fallback: ép refresh lấy Firebase ID token
+      // Backend yêu cầu Firebase ID token (aud = projectId). Luôn dùng Firebase token.
       const firebaseIdToken = await firebaseUser.getIdToken(true);
-
-      const tokenToSend = googleIdToken || firebaseIdToken;
+      const tokenToSend = firebaseIdToken;
       if (!tokenToSend) {
         console.error('No ID token obtained from Google/Firebase');
         return false;
       }
-      console.log('Using token type:', googleIdToken ? 'googleIdToken' : 'firebaseIdToken');
+      console.log('Using token type:', 'firebaseIdToken');
       const data = await apiLoginWithGoogle(tokenToSend);
       const token = data && (data.token || data);
       if (!token) return false;
