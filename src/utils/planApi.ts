@@ -18,6 +18,12 @@ interface PlanApiResponse {
 
 // Base URL is managed centrally in axiosInstance (utils/api.ts)
 
+// Ensure images use HTTPS to avoid mixed-content in production
+const ensureHttps = (url?: string): string | undefined => {
+  if (!url) return url;
+  return url.replace(/^http:\/\//i, 'https://');
+};
+
 // Use shared axiosInstance but keep possibility to override baseURL in dev
 const planApiInstance = axiosInstance;
 
@@ -67,7 +73,7 @@ export const getAllPlans = async (): Promise<Package[]> => {
         `Tối đa ${plan.maxPerVisit} ly mỗi lần ghé thăm`,
         plan.active ? 'Gói đang hoạt động' : 'Gói tạm ngưng'
       ],
-      image: plan.imageUrl || 'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: ensureHttps(plan.imageUrl) || 'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=400',
       popular: false, // Không có thông tin về gói phổ biến từ API
       durationDays: plan.durationDays // Thêm thông tin duration để sử dụng trong UI
     }));
@@ -121,7 +127,7 @@ export const getPlanById = async (planId: string): Promise<Package> => {
         `Tối đa ${plan.maxPerVisit} ly mỗi lần ghé thăm`,
         plan.active ? 'Gói đang hoạt động' : 'Gói tạm ngưng'
       ],
-      image: plan.imageUrl || 'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: ensureHttps(plan.imageUrl) || 'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=400',
       popular: false,
       durationDays: plan.durationDays
     };
